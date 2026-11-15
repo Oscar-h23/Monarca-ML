@@ -139,9 +139,12 @@ def outfits(rows, fuente, presupuesto=None):
         return {"modulo":"OUTFITS", "fuente":fuente,"presupuesto_soles":presupuesto,
                 "factibles":0,"mensaje":"No existe una combinación dentro del presupuesto"}
     values = list(candidates.values())
-    # Puntaje reproducible que recompensa estilo y aprovechamiento prudente del presupuesto.
+    # Con catálogo auténtico no existen valoraciones estéticas verificadas:
+    # optimizar solo el uso del presupuesto, sin inventar compatibilidad.
+    # PRUEBA conserva la puntuación artificial explícitamente simulada.
     def score(v):
-        return .8*v["estilo"]+.2*100*v["precio_soles"]/presupuesto
+        uso = 100*v["precio_soles"]/presupuesto
+        return uso if fuente == "REALES" else .8*v["estilo"]+.2*uso
     # Búsqueda A*: desde un estado vacío, se elige superior e inferior.
     # El costo de cada meta es 100 - puntuación, nunca negativo.
     # La heurística admisible es 0, por lo que A* equivale aquí a
@@ -183,7 +186,9 @@ def outfits(rows, fuente, presupuesto=None):
         "escenarios":len(df),"factibles":len(values),
         "a_estrella":{"combinacion":best,"puntuacion":round(score(best),2)},
         "hill_climbing":{"combinacion":hill,"puntuacion":round(score(hill),2)},
-        "nota":"Búsqueda sobre combinaciones precalculadas, no aprendizaje supervisado; puntuaciones de estilo simuladas."
+        "nota":("Combinaciones del catálogo: optimización de presupuesto, sin evaluación de estilo."
+                if fuente == "REALES" else
+                "Datos de prueba: puntuaciones de estilo simuladas; no equivalen a preferencias reales.")
     }
 
 
