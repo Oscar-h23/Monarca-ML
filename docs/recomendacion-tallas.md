@@ -9,7 +9,7 @@ Módulo integrado en el repositorio Monarca-ML, independiente del pipeline exist
 - No se entrenan modelos con datos personales, fotografías ni identificadores de compradores.
 - La regla usa **2 cm de holgura mínima** en las dimensiones relevantes y descarta variantes sin stock.
 - Si faltan medidas del cuerpo o prenda, no inventa una talla.
-- No se ha conectado aún esta API al backend Spring Boot ni a Supabase.
+- La integración por proxy Spring Boot y repositorios JPA de Supabase está implementada en código; requiere configurar Railway para ejecutarla.
 
 ## Iniciar
 
@@ -40,7 +40,7 @@ curl -X POST http://localhost:8001/internal/v1/tallas/recomendar \
 
 ## Limitaciones y despliegue
 
-**No exponer** `/internal/v1/tallas/recomendar` públicamente: el prototipo carece de autenticación. En una integración posterior, Spring Boot deberá validar autorización, recuperar las medidas del perfil autenticado y consultar únicamente las variantes del producto solicitado. El modelo recibirá solo las medidas necesarias.
+**No exponer** `/internal/v1/tallas/recomendar` a clientes: el endpoint exige ahora un token interno de al menos 24 caracteres. El backend Spring Boot implementa autorización, obtiene medidas del perfil autenticado y consulta las variantes del producto solicitado. El modelo recibirá solo las medidas necesarias.
 
 Se requiere recopilar etiquetas reales de ajuste con consentimiento y realizar evaluación separada antes de afirmar rendimiento de clasificación supervisada.
 
