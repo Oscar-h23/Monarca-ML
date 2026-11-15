@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 import joblib
+import pandas as pd
 from src.entrenar_tallas import train
 
 
@@ -46,11 +47,11 @@ class SizeTrainingTests(unittest.TestCase):
         self.assertEqual(result["source"], "PRUEBA")
         self.assertTrue((out / "tallas_prueba_metricas.json").exists())
         model = joblib.load(out / "tallas_prueba.joblib")
-        prediction = model.predict([{
+        prediction = model.predict(pd.DataFrame([{
             "categoria": "Tops", "talla_comprada": "M",
             "holgura_pecho_cm": 5, "holgura_cintura_cm": 5,
             "holgura_cadera_cm": 5,
-        }])
+        }]))
         self.assertIn(prediction[0], ("PEQUENA", "BIEN", "GRANDE"))
 
     def test_rejects_four_real_rows(self):
