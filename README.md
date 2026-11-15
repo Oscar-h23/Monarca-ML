@@ -117,3 +117,13 @@ el pipeline y su contrato JSON, sin conectarse directamente a la base de datos.
 - [ColumnTransformer y variables mixtas](https://scikit-learn.org/stable/auto_examples/compose/plot_column_transformer_mixed_types.html)
 - [KMeans](https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html)
 - [Evaluación de modelos](https://scikit-learn.org/stable/modules/model_evaluation.html)
+
+## Recomendación de tallas (FastAPI)
+
+Se añadió un **prototipo independiente** para recomendar tallas con reglas de holgura y vecino cercano, con pruebas unitarias.
+
+- Guía: [docs/recomendacion-tallas.md](docs/recomendacion-tallas.md)
+- API: `uvicorn app.main:app --reload --port 8001`
+- Tests: `python -m unittest discover -s tests -v`
+
+> **Nota:** el motor de tallas aún no es un clasificador supervisado entrenado y no está conectado a Spring Boot ni a Supabase. No desplegar públicamente el endpoint interno sin autenticación.
