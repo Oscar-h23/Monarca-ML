@@ -101,3 +101,17 @@ def ejecutar_academico(modulo: str, data: EjecucionAcademica):
         return ejecutar_modulo(modulo.upper(), data.registros, data.fuente, data.presupuesto_soles)
     except (ValueError, KeyError, TypeError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)[:200]) from exc
+
+from .cocompra import complementos as calcular_complementos
+
+class ConsultaCocompra(BaseModel):
+    fuente: str = Field(pattern=r"^(REALES|PRUEBA)$")
+    producto: int = Field(ge=1)
+    cestas: list[list[int]] = Field(min_length=1, max_length=5000)
+
+@app.post("/internal/v1/cocompra/recomendar", dependencies=[Depends(verificar_token)])
+def recomendar_complemento(data: ConsultaCocompra):
+    try:
+        return calcular_complementos(data.cestas,data.producto,data.fuente)
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=422,detail=str(exc)[:180]) from exc
