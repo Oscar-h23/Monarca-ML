@@ -25,10 +25,19 @@ La selección entre KNN y árbol usa macro-F1 de validación (desempate por accu
 
 **Advertencia académica:** 100 filas sintéticas basadas en reglas sirven para comprobar la ejecución del pipeline y describir una prueba de concepto, no para demostrar que el sistema acierta con compradores reales. No se deben mezclar con valoraciones reales ni afirmar que el modelo está validado en producción.
 
-## Pendiente de integración
+## Flujo administrativo integrado
 
-- Backend Spring Boot: endpoint ADMIN para solicitar entrenamiento sobre la fuente guardada; autenticación entre servicios y registro auditable de ejecuciones.
-- Servicio FastAPI: entrenamiento controlado y persistencia de artefactos versionados en almacenamiento duradero, no en disco efímero de Railway.
-- Frontend Angular: botón **Entrenar modelo**, estado de ejecución, visualización de métricas y botón **Activar modelo**.
-- Inferencia: cargar exclusivamente el modelo aprobado y conservar el recomendador actual como respaldo; separar modo académico de la experiencia de clientes.
-- Pruebas integradas y despliegue verificado. **Estas piezas no están implementadas por este commit.**
+- **Administración → Machine Learning → TALLAS**: elige REALES o PRUEBA.
+- **Entrenar modelo**: Spring Boot exporta la fuente seleccionada, envía el CSV autenticado a FastAPI, registra un artefacto en `monarca.ml_modelos_talla` y retorna métricas de entrenamiento, validación y prueba.
+- **Versiones y métricas**: compara modelos KNN y árbol, visualiza macro-F1, accuracy y matriz de confusión. La versión nueva se guarda inactiva.
+- **Activar versión experimental**: almacena cuál modelo está activo en Supabase. El recomendador de productos consulta el modelo guardado y presenta advertencia experimental, especialmente si usa datos sintéticos.
+- **Volver a recomendaciones por reglas**: desactiva todos los artefactos, sin borrar los historiales.
+- **OUTFITS/PATRONES**: la fuente se puede configurar, pero sus datasets y entrenamientos todavía necesitan integración propia.
+
+Los endpoints de entrenamiento y activación requieren `ROLE_ADMIN` en Spring Boot. El servicio ML solo admite token interno de servicio. Los modelos se serializan en un campo privado accesible por JDBC, **no** directamente por el cliente.
+
+Un cambio de fuente no cambia el modelo que ya está activo; el administrador debe entrenar y activar explícitamente otra versión. No se mezclan datos de prueba con valoraciones reales. La precisión del modelo de prueba no representa precisión con clientas reales.
+
+## Verificación pendiente
+
+El CI valida compilación y pruebas automatizadas. La publicación final en Cloudflare y la verificación funcional en navegador autenticado deben comprobarse por separado; no se debe asumir que un CI exitoso demuestra que todo el recorrido de usuario funciona. Para exponer, entrenar con PRUEBA, revisar resultados y activar experimentalmente; no afirmar validación comercial del modelo.
