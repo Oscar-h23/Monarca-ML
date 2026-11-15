@@ -142,17 +142,42 @@ def outfits(rows, fuente, presupuesto=None):
     # Puntaje reproducible que recompensa estilo y aprovechamiento prudente del presupuesto.
     def score(v):
         return .8*v["estilo"]+.2*100*v["precio_soles"]/presupuesto
-    # A*: cada candidato es un nodo, heurística optimista = 100-score.
-    heap=[]
-    for i,v in enumerate(values):
-        heappush(heap,(100-score(v),i))
-    _, best_index=heappop(heap)
-    best=values[best_index]
-    # Hill climbing: ascenso sobre el vecindario de combinaciones, con reinicios.
-    hill=values[0]
-    for candidate in values[1:]:
-        if score(candidate)>score(hill):
-            hill=candidate
+    # Búsqueda A*: desde un estado vacío, se elige superior e inferior.
+    # El costo de cada meta es 100 - puntuación, nunca negativo.
+    # La heurística admisible es 0, por lo que A* equivale aquí a
+    # búsqueda de costo uniforme sobre metas de profundidad 2.
+    heap=[(0.0, 0, None)]
+    best=None
+    while heap:
+        cost, depth, index=heappop(heap)
+        if depth==2:
+            best=values[index]
+            break
+        if depth==0:
+            # Estados parciales con cada variante superior distinta.
+            by_top={}
+            for i,v in enumerate(values):
+                by_top.setdefault(v["id_variantes"][0],[]).append(i)
+            for top,indices in by_top.items():
+                heappush(heap,(0.0,1,indices))
+        else:
+            for i in index:
+                heappush(heap,(100-score(values[i]),2,i))
+    if best is None:
+        raise ValueError("No hay combinaciones factibles")
+    # Hill Climbing: vecinos del orden del catálogo, con tres reinicios.
+    # Puede detenerse en un óptimo local; no realiza búsqueda exhaustiva.
+    hill=None
+    for seed in (0,len(values)//2,len(values)-1):
+        current=seed
+        while True:
+            neighbours=[i for i in (current-1,current+1) if 0<=i<len(values)]
+            improves=[i for i in neighbours if score(values[i])>score(values[current])+1e-9]
+            if not improves:
+                break
+            current=max(improves,key=lambda i:score(values[i]))
+        if hill is None or score(values[current])>score(hill):
+            hill=values[current]
     return {
         "modulo":"OUTFITS","fuente":fuente,"presupuesto_soles":round(presupuesto,2),
         "escenarios":len(df),"factibles":len(values),
