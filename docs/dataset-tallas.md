@@ -6,9 +6,9 @@ Este módulo prepara datos para el **futuro entrenamiento supervisado**. No entr
 
 Después de recibir un pedido con estado `FINALIZADO`, `ENTREGADO` o `COMPLETADO`, el propietario autenticado puede valorar **una vez** cada línea de prenda como `PEQUENA`, `BIEN` o `GRANDE`, aceptando expresamente su uso para ML.
 
-Se guardan medidas actuales del cliente y medidas de la variante **en el momento de la valoración** (`origen_medidas=AL_VALORAR`), no las medidas históricas de la fecha de compra. Si el cliente o la prenda cambian sus medidas entre la compra y la valoración, la observación podría no reflejar las dimensiones originales.
+Se guardan medidas actuales del cliente y medidas de la variante **en el momento de la valoración** (`origen_medidas=AL_VALORAR`), no las medidas históricas de la fecha de compra. El API ahora exige que las medidas corporales necesarias para la categoría estén completas antes de aceptar valoraciones nuevas. Si el cliente o la prenda cambian sus medidas entre la compra y la valoración, la observación podría no reflejar las dimensiones originales.
 
-Las filas sin medidas completas para la categoría son válidas como opiniones, pero el exportador **las excluye** del dataset de entrenamiento.
+Las filas sin medidas completas para la categoría son válidas como opiniones históricas, pero el exportador **las excluye** del dataset de entrenamiento. Los registros históricos completados a partir de medidas posteriores, con confirmación del usuario de que no cambiaron, se identifican como `CONFIRMADA_POSTERIOR`; esta procedencia debe conservarse en los metadatos de análisis.
 
 ## Extraer datos con SQL Editor de Supabase
 
@@ -21,7 +21,7 @@ SELECT
   prenda_pecho_cm, prenda_cintura_cm, prenda_cadera_cm
 FROM monarca.valoraciones_talla
 WHERE consentimiento_ml = TRUE
-  AND origen_medidas = 'AL_VALORAR'
+  AND origen_medidas IN ('AL_VALORAR', 'CONFIRMADA_POSTERIOR')
 ORDER BY fecha_valoracion;
 ```
 
