@@ -47,3 +47,38 @@ Se requiere recopilar etiquetas reales de ajuste con consentimiento y realizar e
 ## Relación con el frontend
 
 La ficha de producto de Monarca-front dispone de un baseline por reglas implementado en Angular. Este módulo FastAPI es experimental y no reemplaza automáticamente al baseline del frontend.
+
+## Integración con la base de datos Supabase
+
+La base PostgreSQL `monarca` ya está conectada a Monarca-back mediante JPA.
+**No** es necesario agregar credenciales de Supabase al servicio ML.
+
+Flujo: Angular (JWT) → `GET /api/perfil/tallas/{idProducto}` en Spring Boot → consulta
+`usuarios`, `productos` y `variantes_producto` con los repositorios actuales → FastAPI.
+Spring Boot obtiene las medidas del usuario autenticado; no acepta valores corporales
+arbitrarios enviados desde el navegador y solo remite las medidas y variantes necesarias.
+
+### Variables de entorno
+
+En el servicio Python de Railway:
+- `ML_INTERNAL_TOKEN`: secreto aleatorio de al menos 24 caracteres, diferente del JWT de la tienda.
+- Comando de arranque: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
+
+En el backend Spring Boot de Railway:
+- `ML_SERVICE_URL`: URL HTTPS del servicio Monarca-ML, sin barra final.
+- `ML_INTERNAL_TOKEN`: exactamente el mismo token del servicio Python.
+
+El frontend NO contiene ninguna clave. Se envía `X-ML-Token` exclusivamente entre servidores.
+
+### Prueba rápida (solo después de configurar las variables)
+
+1. Confirmar que el ML responde `GET /health` con `status: ok`.
+2. Autenticarse en la tienda y completar las medidas del perfil.
+3. Abrir un producto Tops/Bottoms/Vestidos con variantes que tengan medidas.
+4. Comprobar `GET /api/perfil/tallas/{idProducto}` usando el JWT del usuario.
+5. Si ML está caído, el frontend utiliza el baseline local, sin interrumpir la compra.
+
+**Limitaciones:** sin token el endpoint privado da 401. No usar el servicio como
+predicción de ajuste validada: sus tablas de medidas y la holgura mínima aún
+requieren evaluación con usuarios. No se ha desplegado Monarca-ML ni configurado
+automáticamente Railway desde esta modificación.
