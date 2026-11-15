@@ -96,17 +96,38 @@ def demanda(rows, fuente):
     model = LinearRegression().fit(train[inputs], train["unidades_vendidas_semana"])
     predicted = np.maximum(0, model.predict(test[inputs]))
     baseline = np.full(len(test), float(train["unidades_vendidas_semana"].mean()))
+    # Escenarios hipotéticos POR PRODUCTO, no pronósticos observados:
+    # la visita semanal no se conoce antes de esa semana y aquí se supone
+    # igual a la mediana sintética histórica. No intervenir el inventario.
+    escenarios = []
+    for id_producto, grupo in df.groupby("id_producto"):
+        precio = float(grupo["precio_soles"].iloc[-1])
+        visitas = int(round(float(grupo["visitas_producto_semana"].median())))
+        escenario = pd.DataFrame([{
+            "precio_soles": precio,
+            "descuento_porcentaje": 0,
+            "visitas_producto_semana": visitas,
+        }])
+        estimado = max(0.0, float(model.predict(escenario)[0]))
+        escenarios.append({
+            "idProducto": int(id_producto),
+            "visitasSupuestas": visitas,
+            "descuentoSupuesto": 0,
+            "unidadesEscenario": round(estimado, 1),
+            "precioReferencia": round(precio, 2)
+        })
     return {
         "modulo": "DEMANDA", "fuente": fuente, "algoritmo": "regresion_lineal",
         "registros": len(df), "entrenamiento": len(train), "prueba": len(test),
         "semanas": len(dates),
+        "escenarios_producto": escenarios,
         "mae_unidades": round(float(mean_absolute_error(test["unidades_vendidas_semana"], predicted)), 3),
         "mae_baseline_unidades": round(float(mean_absolute_error(test["unidades_vendidas_semana"], baseline)), 3),
         "r2_prueba": round(float(r2_score(test["unidades_vendidas_semana"], predicted)), 4) if len(test) > 1 else None,
         "ejemplos": [{"producto": str(row["id_producto"]), "real": int(row["unidades_vendidas_semana"]),
                       "estimado": round(float(predicted[i]), 1)}
                      for i, (_, row) in enumerate(test.head(5).iterrows())],
-        "advertencia": "Evaluación retrospectiva con visitas conocidas; no demuestra pronóstico de demanda futura."
+        "advertencia": "Escenario hipotético con visitas semanales supuestas; no es una predicción futura validada."
     }
 
 
