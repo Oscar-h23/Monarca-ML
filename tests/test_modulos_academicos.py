@@ -30,6 +30,10 @@ class AcademicModulesTest(unittest.TestCase):
         result=ejecutar("DEMANDA",rows,"PRUEBA")
         self.assertEqual(result["registros"],80)
         self.assertGreater(result["prueba"],0)
+        self.assertEqual(len(result["escenarios_producto"]),4)
+        self.assertTrue(all(x["unidadesEscenario"]>=0 for x in result["escenarios_producto"]))
+        self.assertTrue(all(x["visitasSupuestas"]>0 for x in result["escenarios_producto"]))
+
 
     def test_outfits_budget(self):
         rows=[{
@@ -44,6 +48,34 @@ class AcademicModulesTest(unittest.TestCase):
         self.assertEqual(result["factibles"],100)
         self.assertLessEqual(result["a_estrella"]["combinacion"]["precio_soles"],140)
         self.assertLessEqual(result["hill_climbing"]["combinacion"]["precio_soles"],140)
+
+
+    def test_real_outfits_ignore_simulated_style(self):
+        rows=[
+            {"id_variante_superior":3,"superior":"Blusa",
+             "precio_superior_soles":45,
+             "id_variante_inferior":18,"inferior":"Pantalón",
+             "precio_inferior_soles":65,
+             "puntuacion_estilo_simulada_0_100":100,
+             "presupuesto_soles":180},
+            {"id_variante_superior":4,"superior":"Blusa",
+             "precio_superior_soles":55,
+             "id_variante_inferior":19,"inferior":"Pantalón",
+             "precio_inferior_soles":85,
+             "puntuacion_estilo_simulada_0_100":0,
+             "presupuesto_soles":180},
+        ]
+        result=ejecutar("OUTFITS",rows,"REALES",180)
+        self.assertEqual(result["a_estrella"]["combinacion"]["precio_soles"],140)
+        self.assertIn("sin evaluación de estilo",result["nota"])
+
+    def test_no_outfits_under_budget(self):
+        rows=[{"id_variante_superior":3,"superior":"Blusa",
+              "precio_superior_soles":90,"id_variante_inferior":18,
+              "inferior":"Pantalón","precio_inferior_soles":140,
+              "puntuacion_estilo_simulada_0_100":0,"presupuesto_soles":180}]
+        result=ejecutar("OUTFITS",rows,"REALES",50)
+        self.assertEqual(result["factibles"],0)
 
 
 if __name__ == "__main__":
