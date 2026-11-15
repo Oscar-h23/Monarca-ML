@@ -86,3 +86,18 @@ def entrenar_tallas(data: EntrenarRequest):
             "modelo_base64": base64.b64encode(artifact).decode("ascii"),
             "preparacion": summary,
         }
+
+# Módulos académicos nuevos: no alteran la recomendación pública de tallas.
+from .modulos_academicos import ejecutar as ejecutar_modulo
+
+class EjecucionAcademica(BaseModel):
+    fuente: str = Field(pattern=r"^(REALES|PRUEBA)$")
+    registros: list[dict] = Field(min_length=1, max_length=5000)
+    presupuesto_soles: float | None = None
+
+@app.post("/internal/v1/modulos/{modulo}/ejecutar", dependencies=[Depends(verificar_token)])
+def ejecutar_academico(modulo: str, data: EjecucionAcademica):
+    try:
+        return ejecutar_modulo(modulo.upper(), data.registros, data.fuente, data.presupuesto_soles)
+    except (ValueError, KeyError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)[:200]) from exc
