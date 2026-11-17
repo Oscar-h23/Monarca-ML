@@ -33,6 +33,25 @@ class AcademicModulesTest(unittest.TestCase):
         self.assertEqual(len(result["escenarios_producto"]),4)
         self.assertTrue(all(x["unidadesEscenario"]>=0 for x in result["escenarios_producto"]))
         self.assertTrue(all(x["visitasSupuestas"]>0 for x in result["escenarios_producto"]))
+        self.assertGreaterEqual(len(result["ejemplos"]), 10)
+        self.assertTrue(all("fecha" in row and "estimado" in row for row in result["ejemplos"]))
+        escenario = {"idProducto": 2, "precioSoles": 49.9,
+                     "descuentoPorcentaje": 10, "visitasSemana": 120}
+        modificado = ejecutar("DEMANDA", rows, "PRUEBA", escenario_demanda=escenario)
+        self.assertEqual(modificado["mae_unidades"], result["mae_unidades"])
+        self.assertEqual(modificado["r2_prueba"], result["r2_prueba"])
+        self.assertEqual(modificado["escenario_personalizado"]["idProducto"], 2)
+        self.assertGreaterEqual(modificado["escenario_personalizado"]["unidadesEscenario"], 0)
+        with self.assertRaisesRegex(ValueError, "identificador"):
+            ejecutar("DEMANDA", rows, "PRUEBA", escenario_demanda={
+                "idProducto": 999, "precioSoles": 49.9,
+                "descuentoPorcentaje": 0, "visitasSemana": 120})
+        with self.assertRaisesRegex(ValueError, "solo admite"):
+            ejecutar("DEMANDA", rows, "REALES", escenario_demanda=escenario)
+        with self.assertRaisesRegex(ValueError, "descuento"):
+            ejecutar("DEMANDA", rows, "PRUEBA", escenario_demanda={
+                **escenario, "descuentoPorcentaje": 110})
+
 
 
     def test_outfits_budget(self):
