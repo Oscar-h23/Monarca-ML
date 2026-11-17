@@ -69,7 +69,7 @@ def segmentar(rows, fuente):
     }
 
 
-def demanda(rows, fuente):
+def demanda(rows, fuente, escenario_personalizado=None):
     cols = ["fecha_inicio_semana", "id_producto", "precio_soles",
             "descuento_porcentaje", "visitas_producto_semana",
             "unidades_vendidas_semana"]
@@ -116,17 +116,52 @@ def demanda(rows, fuente):
             "unidadesEscenario": round(estimado, 1),
             "precioReferencia": round(precio, 2)
         })
+    # La simulación evalúa el mismo modelo entrenado; no modifica los datos ni las métricas.
+    # Solo permite escenarios de PRUEBA. Se valida que el producto exista en el dataset.
+    personalizado = None
+    if escenario_personalizado is not None:
+        if fuente != "PRUEBA":
+            raise ValueError("La simulación personalizada solo admite datos PRUEBA")
+        if not isinstance(escenario_personalizado, dict):
+            raise ValueError("Escenario inválido")
+        product_id = int(escenario_personalizado["idProducto"])
+        if product_id not in set(df["id_producto"].astype(int)):
+            raise ValueError("El identificador de producto no existe en el dataset de prueba")
+        price = float(escenario_personalizado["precioSoles"])
+        discount = float(escenario_personalizado["descuentoPorcentaje"])
+        visits = int(escenario_personalizado["visitasSemana"])
+        if not (math.isfinite(price) and 0.01 <= price <= 10000):
+            raise ValueError("El precio debe estar entre S/ 0,01 y S/ 10000")
+        if not (math.isfinite(discount) and 0 <= discount <= 100):
+            raise ValueError("El descuento debe estar entre 0 y 100 %")
+        if not 0 <= visits <= 100000:
+            raise ValueError("Las visitas deben estar entre 0 y 100000")
+        scenario_input = pd.DataFrame([{
+            "precio_soles": price,
+            "descuento_porcentaje": discount,
+            "visitas_producto_semana": visits,
+        }])
+        estimated = max(0.0, float(model.predict(scenario_input)[0]))
+        personalizado = {
+            "idProducto": product_id, "precioSoles": round(price, 2),
+            "descuentoPorcentaje": discount, "visitasSupuestas": visits,
+            "unidadesEscenario": round(estimated, 2),
+            "advertencia": "Resultado hipotético sobre registros sintéticos, no pronóstico de ventas reales."
+        }
     return {
         "modulo": "DEMANDA", "fuente": fuente, "algoritmo": "regresion_lineal",
         "registros": len(df), "entrenamiento": len(train), "prueba": len(test),
         "semanas": len(dates),
         "escenarios_producto": escenarios,
+        "escenario_personalizado": personalizado,
         "mae_unidades": round(float(mean_absolute_error(test["unidades_vendidas_semana"], predicted)), 3),
         "mae_baseline_unidades": round(float(mean_absolute_error(test["unidades_vendidas_semana"], baseline)), 3),
         "r2_prueba": round(float(r2_score(test["unidades_vendidas_semana"], predicted)), 4) if len(test) > 1 else None,
-        "ejemplos": [{"producto": str(row["id_producto"]), "real": int(row["unidades_vendidas_semana"]),
-                      "estimado": round(float(predicted[i]), 1)}
-                     for i, (_, row) in enumerate(test.head(5).iterrows())],
+        "ejemplos": [{"producto": str(row["id_producto"]),
+                       "fecha": row["fecha_inicio_semana"].strftime("%Y-%m-%d"),
+                       "real": float(row["unidades_vendidas_semana"]),
+                       "estimado": round(float(predicted[i]), 2)}
+                      for i, (_, row) in enumerate(test.head(16).iterrows())],
         "advertencia": "Escenario hipotético con visitas semanales supuestas; no es una predicción futura validada."
     }
 
@@ -213,13 +248,13 @@ def outfits(rows, fuente, presupuesto=None):
     }
 
 
-def ejecutar(modulo, rows, fuente, presupuesto=None):
+def ejecutar(modulo, rows, fuente, presupuesto=None, escenario_demanda=None):
     if fuente not in {"REALES","PRUEBA"}:
         raise ValueError("Fuente inválida")
     if modulo=="CLUSTERING":
         return segmentar(rows, fuente)
     if modulo=="DEMANDA":
-        return demanda(rows, fuente)
+        return demanda(rows, fuente, escenario_demanda)
     if modulo=="OUTFITS":
         return outfits(rows, fuente, presupuesto)
     raise ValueError("Módulo no compatible")

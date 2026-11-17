@@ -90,15 +90,26 @@ def entrenar_tallas(data: EntrenarRequest):
 # Módulos académicos nuevos: no alteran la recomendación pública de tallas.
 from .modulos_academicos import ejecutar as ejecutar_modulo
 
+class EscenarioDemanda(BaseModel):
+    idProducto: int = Field(ge=1)
+    precioSoles: float = Field(gt=0, le=10000, allow_inf_nan=False)
+    descuentoPorcentaje: float = Field(ge=0, le=100, allow_inf_nan=False)
+    visitasSemana: int = Field(ge=0, le=100000)
+
+
 class EjecucionAcademica(BaseModel):
     fuente: str = Field(pattern=r"^(REALES|PRUEBA)$")
     registros: list[dict] = Field(min_length=1, max_length=5000)
     presupuesto_soles: float | None = None
+    escenario_demanda: EscenarioDemanda | None = None
 
 @app.post("/internal/v1/modulos/{modulo}/ejecutar", dependencies=[Depends(verificar_token)])
 def ejecutar_academico(modulo: str, data: EjecucionAcademica):
     try:
-        return ejecutar_modulo(modulo.upper(), data.registros, data.fuente, data.presupuesto_soles)
+        return ejecutar_modulo(
+            modulo.upper(), data.registros, data.fuente, data.presupuesto_soles,
+            data.escenario_demanda.model_dump() if data.escenario_demanda else None
+        )
     except (ValueError, KeyError, TypeError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)[:200]) from exc
 
